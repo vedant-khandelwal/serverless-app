@@ -1,7 +1,5 @@
 service: fetch-file-and-store-in-s3
 
-frameworkVersion: ">=1.1.0"
-
 custom:
   bucket: S3Bucket
 
@@ -25,6 +23,8 @@ functions:
       BUCKET: ${self:custom.bucket}
 
 resources:
-  Type: AWS::S3::Bucket
-  Properties: 
-    BucketName: ${self:custom.bucket}
+  Resources:
+    S3BucketOutputs:
+      Type: AWS::S3::Bucket
+      Properties: 
+        BucketName: ${self:custom.bucket}
