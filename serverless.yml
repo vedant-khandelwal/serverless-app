@@ -22,9 +22,9 @@ functions:
     environment:
       BUCKET: ${self:custom.bucket}
 
-resources:
-  Resources:
-    S3BucketOutputs:
-      Type: AWS::S3::Bucket
-      Properties: 
-        BucketName: ${self:custom.bucket}
+# resources:
+#   Resources:
+#     S3BucketOutputs:
+#       Type: AWS::S3::Bucket
+#       Properties: 
+#         BucketName: ${self:custom.bucket}
