@@ -2,6 +2,7 @@ service: fetch-file-and-store-in-s3
 
 custom:
   bucket: S3Bucket
+  streamname: testStream 
 
 provider:
   name: aws
@@ -21,10 +22,26 @@ functions:
     handler: handler.save
     environment:
       BUCKET: ${self:custom.bucket}
-
+  streamer:
+    handler: handler.import
+    events:
+      - stream:
+          type: kinesis
+          arn: arn:aws:kinesis:<region>:<accountID>:stream/<streamname>
+          batchSize: 100
+          startingPosition: TRIM_HORIZON
+          enabled: true
 # resources:
 #   Resources:
 #     S3BucketOutputs:
 #       Type: AWS::S3::Bucket
 #       Properties: 
 #         BucketName: ${self:custom.bucket}
+
+resources:
+  Resources:
+    Stream:
+      Type: AWS::Kinesis::Stream
+      Properties:
+        Name: ${self.custom.streamname}
+        ShardCount: 1
