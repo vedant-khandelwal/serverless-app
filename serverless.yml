@@ -27,7 +27,7 @@ functions:
     events:
       - stream:
           type: kinesis
-          arn: arn:aws:kinesis:<region>:<accountID>:stream/<streamname>
+          arn: arn:aws:kinesis:us-east-1::stream/${self:custom.streamname}
           batchSize: 100
           startingPosition: TRIM_HORIZON
           enabled: true
@@ -43,5 +43,5 @@ resources:
     Stream:
       Type: AWS::Kinesis::Stream
       Properties:
-        Name: ${self.custom.streamname}
+        Name: ${self:custom.streamname}
         ShardCount: 1
