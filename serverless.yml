@@ -27,7 +27,7 @@ functions:
     events:
       - stream:
           type: kinesis
-          arn: arn:aws:kinesis:us-east-1::stream/${self:custom.streamname}
+          arn: arn:aws:kinesis:us-east-1:928097140335:stream/${self:custom.streamname}
           batchSize: 100
           startingPosition: TRIM_HORIZON
           enabled: true
