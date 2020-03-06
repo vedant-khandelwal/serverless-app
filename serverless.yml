@@ -48,14 +48,15 @@ functions:
           enabled: true
   
 # Resources to be created - Raw CloudFormation
-resources:
-  Resources:
-    S3BucketOutputs:
-      Type: AWS::S3::Bucket
-      Properties:
-        BucketName: ${self:custom.bucket}
-    Stream:
-      Type: AWS::Kinesis::Stream
-      Properties:
-        Name: ${self:custom.streamname}
-        ShardCount: 1
+# TODO: Separate out of this yaml
+# resources:
+#   Resources:
+#     S3BucketOutputs:
+#       Type: AWS::S3::Bucket
+#       Properties:
+#         BucketName: ${self:custom.bucket}
+#     Stream:
+#       Type: AWS::Kinesis::Stream
+#       Properties:
+#         Name: ${self:custom.streamname}
+#         ShardCount: 1
