@@ -1,49 +1,55 @@
-'use strict';
+const aws = require('aws-sdk')
+const s3 = new aws.S3()
+const path = require('path')
 
-const fetch = require('node-fetch');
-const AWS = require('aws-sdk'); // eslint-disable-line import/no-extraneous-dependencies
+const outputBucket = process.env.OUTPUT_BUCKET
 
-const s3 = new AWS.S3();
-
-const request = require('request');
-const async = require('async');
-
-module.exports.import = (event, context, callback) => {
-  
-  var count = 1;
-  var MIN = 1;
-  var MAX = 100;
-  function getRandom() {
-    return Math.random() * (MAX - MIN) + MIN;
+exports.replicate = function main(event, context) {
+  // Fail on mising data
+  if (!outputBucket) {
+    context.fail('Error: Environment variable OUTPUT_BUCKET missing')
+    return
   }
-  var URL = "https://caif9vt4h5.execute-api.us-east-1.amazonaws.com/test/events";
-  async.whilst(function (cb) {
-    return cb(null, count <= 100000);
-  },
-  function (next) {
-    var obj = {
-      time : new Date().toISOString(),
-      entity : "e1",
-      value : getRandom(),
-      tenant : "tenant1",
-      datastream : "datastream1",
-      signal: "signal1"
-    }
-    console.log(JSON.stringify(obj));
-    request({ url : URL, method : "POST", json : obj}, function (error, response, body) {
-      if (!error && response.statusCode == 200) {
-        console.log(body)
+  if (event.Records === null) {
+    context.fail('Error: Event has no records.')
+    return
+  }
+
+  let tasks = []
+  for (let i = 0; i < event.Records.length; i++) {
+    tasks.push(replicatePromise(event.Records[i], outputBucket))
+  }
+
+  Promise.all(tasks)
+    .then(() => { context.succeed() })
+    .catch(() => { context.fail() })
+}
+
+function replicatePromise(record, destBucket) {
+  return new Promise((resolve, reject) => {
+    // The source bucket and source key are part of the event data
+    var srcBucket = record.s3.bucket.name
+    var srcKey = decodeURIComponent(record.s3.object.key.replace(/\+/g, " "))
+
+    // Modify destKey if an alternate copy location is preferred
+    var destKey = srcKey
+    var msg = 'copying ' + srcBucket + ':' + srcKey + ' to ' + destBucket + ':' + destKey
+
+    console.log('Attempting: ' + msg)
+    s3.copyObject({
+      Bucket: destBucket,
+      Key: destKey,
+      CopySource: encodeURIComponent(srcBucket + '/' + srcKey),
+      MetadataDirective: 'COPY'
+    }, (err, data) => {
+      if (err) {
+        console.log('Error:' + msg)
+        console.log(err, err.stack) // an error occurred
+        return reject('Error:' + msg)
       } else {
-        console.error(err);
+        console.log('Success: ' + msg)
+        return resolve('Success: ' + msg)
       }
-      count++;
-      setTimeout(function(){
-        next();
-      }, 10);  
-    });
-  },
-  function (err) {
-    console.log("done", err);
-    // All things are done!
-  });
-};
+    })
+  })
+}
