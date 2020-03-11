@@ -1,5 +1,4 @@
 service: awswebsocketchat
-frameworkVersion: "1.48.2"
 
 custom:
   currentStage: ${opt:stage, self:provider.stage}
