@@ -1,37 +1,79 @@
-service: replicator
+service: awswebsocketchat
+frameworkVersion: "1.48.2"
 
 custom:
-  inputBucket: input-bucket # Change to unique name
-  outputBucket: output-bucket # Change to unique name
+  currentStage: ${opt:stage, self:provider.stage}
+  lambdaRunTime: python3.7
+  socketConnectionsTableName: socketConnections-#{AWS::AccountId}-${self:custom.currentStage}
 
 provider:
   name: aws
-  runtime: nodejs8.10
-  stage: dev
+  iamManagedPolicies:
+  - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+  runtime: ${self:custom.lambdaRunTime}
+  versionFunctions: false
   region: us-east-1
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - s3:PutObject
-        - s3:PutObjectAcl
-      Resource: "arn:aws:s3:::${self:custom.outputBucket}/*"
-    - Effect: Allow
-      Action:
-        - s3:GetObject
-        - s3:GetObjectAcl
-      Resource: "arn:aws:s3:::${self:custom.inputBucket}/*"
+  timeout: 29
+
+plugins:
+  - serverless-pseudo-parameters
+
+package:
+  individually: true
+  exclude:
+    - "lib/**"
+    - "node_modules/**"
+
+layers:
+  pythonPackageLayer:
+    path: lib
+    name: Python-Package-layer
+    description: Python Package layer
+    compatibleRuntimes:
+      - ${self:custom.lambdaRunTime}
 
 functions:
-  replicate:
-    handler: handler.replicate
-    environment:
-      OUTPUT_BUCKET: ${self:custom.outputBucket}
+  connectHandler:
+    handler: connect_handler.handle
     events:
-      - s3: ${self:custom.inputBucket}
+      - websocket: $connect
+    layers:
+      - { Ref: PythonPackageLayerLambdaLayer }
+    environment:
+      SOCKET_CONNECTIONS_TABLE_NAME: ${self:custom.socketConnectionsTableName}
+
+  disconnectHandler:
+    handler: disconnect_handler.handle
+    events:
+      - websocket: $disconnect
+    layers:
+      - { Ref: PythonPackageLayerLambdaLayer }
+    environment:
+      SOCKET_CONNECTIONS_TABLE_NAME: ${self:custom.socketConnectionsTableName}
+
+  onMessageHandler:
+    handler: on_message_handler.handle
+    events:
+      - websocket:
+          route: onMessage
+    layers:
+      - { Ref: PythonPackageLayerLambdaLayer }
+    environment:
+      SOCKET_CONNECTIONS_TABLE_NAME: ${self:custom.socketConnectionsTableName}
 
 resources:
   Resources:
-    S3BucketOutputs:
-      Type: AWS::S3::Bucket
+    socketConnectionsTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
       Properties:
-        BucketName: ${self:custom.outputBucket}
+        TableName: ${self:custom.socketConnectionsTableName}
+        AttributeDefinitions:
+          - AttributeName: connectionId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: connectionId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        SSESpecification:
+          SSEEnabled: true
